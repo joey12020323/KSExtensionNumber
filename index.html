@@ -7,6 +7,13 @@
 <body>
   <h1>電話分機查詢</h1>
 
+  <label for="categories">請選擇類別：</label>
+  <select id="categories">
+    <option value="">--全部類別--</option>
+  </select>
+
+  <br><br>
+
   <label for="names">請選擇人名：</label>
   <select id="names">
     <option value="">--請選擇--</option>
@@ -16,14 +23,15 @@
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
-    // Excel 檔案的網址（raw 連結）
-    const fileUrl = 'https://raw.githubusercontent.com/joey12020323/KSExtensionNumber/main/data.xlsx';
+    const fileUrl = 'https://raw.githubusercontent.com/你的帳號/你的-repo/main/data.xlsx';
 
-    const selectElement = document.getElementById('names');
+    const categoryElement = document.getElementById('categories');
+    const nameElement = document.getElementById('names');
     const extensionElement = document.getElementById('extension');
-    let dataMap = {};
 
-    // 下載並解析 Excel
+    let rawData = []; // 存放整個 Excel 的資料
+    let dataMap = {}; // {人名: {類別, 電話分機號碼}}
+
     async function loadExcel() {
       const response = await fetch(fileUrl);
       const arrayBuffer = await response.arrayBuffer();
@@ -31,23 +39,58 @@
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
 
+      rawData = jsonData;
+      const categoriesSet = new Set();
+
       jsonData.forEach(row => {
+        const category = row['類別'];
         const name = row['人名'];
         const extension = row['電話分機號碼'];
-        if (name && extension) {
-          dataMap[name] = extension;
+        if (category && name && extension) {
+          categoriesSet.add(category);
+          dataMap[name] = { category, extension };
+        }
+      });
+
+      // 填入類別下拉選單
+      Array.from(categoriesSet).sort().forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        categoryElement.appendChild(option);
+      });
+
+      // 一開始載入所有人名
+      populateNames();
+    }
+
+    // 根據目前選的類別，更新人名選單
+    function populateNames() {
+      const selectedCategory = categoryElement.value;
+      nameElement.innerHTML = '<option value="">--請選擇--</option>';
+
+      rawData.forEach(row => {
+        const category = row['類別'];
+        const name = row['人名'];
+        if (!selectedCategory || category === selectedCategory) {
           const option = document.createElement('option');
           option.value = name;
           option.textContent = name;
-          selectElement.appendChild(option);
+          nameElement.appendChild(option);
         }
       });
     }
 
-    // 當選擇改變時，更新分機號碼
-    selectElement.addEventListener('change', () => {
-      const selectedName = selectElement.value;
-      extensionElement.textContent = dataMap[selectedName] || '查無號碼';
+    // 當選擇類別時更新人名下拉
+    categoryElement.addEventListener('change', () => {
+      populateNames();
+      extensionElement.textContent = '請先選擇人名'; // 類別改變，分機清空
+    });
+
+    // 當選擇人名時更新電話分機
+    nameElement.addEventListener('change', () => {
+      const selectedName = nameElement.value;
+      extensionElement.textContent = dataMap[selectedName]?.extension || '查無號碼';
     });
 
     // 初始化

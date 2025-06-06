@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>電話分機查詢</title>
+</head>
+<body>
+  <h1>電話分機查詢</h1>
+
+  <label for="names">請選擇人名：</label>
+  <select id="names">
+    <option value="">--請選擇--</option>
+  </select>
+
+  <p>電話分機：<span id="extension">請先選擇人名</span></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    // Excel 檔案的網址（raw 連結）
+    const fileUrl = 'https://raw.githubusercontent.com/joey12020323/KSExtensionNumber/main/data.xlsx';
+
+    const selectElement = document.getElementById('names');
+    const extensionElement = document.getElementById('extension');
+    let dataMap = {};
+
+    // 下載並解析 Excel
+    async function loadExcel() {
+      const response = await fetch(fileUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      jsonData.forEach(row => {
+        const name = row['人名'];
+        const extension = row['電話分機號碼'];
+        if (name && extension) {
+          dataMap[name] = extension;
+          const option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          selectElement.appendChild(option);
+        }
+      });
+    }
+
+    // 當選擇改變時，更新分機號碼
+    selectElement.addEventListener('change', () => {
+      const selectedName = selectElement.value;
+      extensionElement.textContent = dataMap[selectedName] || '查無號碼';
+    });
+
+    // 初始化
+    loadExcel();
+  </script>
+</body>
+</html>
